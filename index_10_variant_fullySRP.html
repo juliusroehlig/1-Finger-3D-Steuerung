@@ -1184,25 +1184,6 @@
                 <div class="result-row"><span>Gesamtzeit</span><span>${(totalTime / 1000).toFixed(1)}s</span></div>
             `;
 
-                // Daten für die übergeordnete Seite vorbereiten
-                const data = {
-                    participantId: state.participantId,
-                    difficulty: state.difficulty,
-                    totalTrials: state.totalTrials,
-                    trials: state.trials,
-                    summary: {
-                        successRate: successCount / state.totalTrials,
-                        avgError: avgError,
-                        avgTime: avgTime,
-                        totalTime: totalTime
-                            },
-                    exportedAt: new Date().toISOString()
-                    };
-
-                 // Daten an die übergeordnete Seite senden
-                window.parent.postMessage(data, 'https://soscisurvey.psych.tu-dresden.de');
-
-            
             showScreen('results');
         }
 
