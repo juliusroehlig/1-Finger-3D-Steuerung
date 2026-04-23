@@ -1187,33 +1187,39 @@
             showScreen('results');
         }
 
-        async function exportData() {
-            const data = {
-                participantId: state.participantId,
-                difficulty:    state.difficulty,
-                totalTrials:   state.totalTrials,
-                trials:        state.trials,
-                summary: {
-                    successRate: state.trials.filter(t => t.success).length / state.trials.length,
-                    avgError:    state.trials.reduce((sum, t) => sum + t.error.total, 0) / state.trials.length,
-                    avgTime:     state.trials.reduce((sum, t) => sum + t.duration,    0) / state.trials.length
-                },
-                exportedAt: new Date().toISOString()
-            };
-
-            if (window.studyAPI) {
-                const filepath = await window.studyAPI.saveData(data);
-                showFeedback('Gespeichert!', 'success', 2000);
-                alert(`Daten gespeichert:\n${filepath}`);
-            } else {
-                const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-                const url  = URL.createObjectURL(blob);
-                const a    = document.createElement('a');
-                a.href     = url;
-                a.download = `mst-v2-studie-${state.participantId}-${Date.now()}.json`;
-                a.click();
-                URL.revokeObjectURL(url);
-            }
+         async function exportData() {
+                // CSV-Header
+                const csvHeader = 'Teilnehmer-ID;Anzahl_Trials;Schwierigkeit;Trial_Nr;Zeit_ms;Zeit_s\n';
+        
+                // CSV-Zeilen: eine Zeile pro Trial
+                const csvRows = state.trials.map(t => {
+                    return [
+                        state.participantId,
+                        state.totalTrials,
+                        state.difficulty,
+                        t.trial,
+                        Math.round(t.duration),
+                        (t.duration / 1000).toFixed(2)
+                    ].join(';');
+                }).join('\n');
+        
+                const csvContent = csvHeader + csvRows;
+        
+                if (window.studyAPI) {
+                    // Falls eine native API vorhanden ist (z.B. Electron)
+                    const filepath = await window.studyAPI.saveData(csvContent);
+                    showFeedback('Gespeichert!', 'success', 2000);
+                    alert(`Daten gespeichert:\n${filepath}`);
+                } else {
+                    // Browser-Download als CSV
+                    const BOM = '\uFEFF'; // UTF-8 BOM für korrekte Umlaute in Excel
+                    const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
+                    const url  = URL.createObjectURL(blob);
+                    const a    = document.createElement('a');
+                    a.href     = url;
+                    a.download = `mst-v2-studie-${state.participantId}-${Date.now()}.csv`;
+                    a.click();
+                    URL.revokeObjectURL(url);
         }
 
         // ==================== CONTROL PAD RUNTIME ====================
