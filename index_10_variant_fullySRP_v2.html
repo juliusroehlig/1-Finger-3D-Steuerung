@@ -1,0 +1,1374 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MST-v2 Studie - 1-Finger 3D Translation</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh;
+            color: #fff;
+            overflow: hidden;
+            touch-action: none;
+            user-select: none;
+        }
+
+        /* ==================== SCREENS ==================== */
+        .screen {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 30px;
+            gap: 25px;
+        }
+
+        .screen.active {
+            display: flex;
+        }
+
+        /* ==================== SETUP SCREEN ==================== */
+        .setup-container {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            min-width: 400px;
+        }
+
+        .setup-container h1 {
+            font-size: 1.8rem;
+            margin-bottom: 10px;
+            text-align: center;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .setup-container .subtitle {
+            text-align: center;
+            opacity: 0.7;
+            margin-bottom: 30px;
+            font-size: 0.9rem;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 12px 16px;
+            border-radius: 10px;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            background: rgba(255, 255, 255, 0.05);
+            color: #fff;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .form-group select option {
+            background: #1a1a2e;
+        }
+
+        .btn {
+            padding: 14px 30px;
+            border-radius: 10px;
+            border: none;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.3s;
+        }
+
+        .btn:active {
+            transform: scale(0.98);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: #fff;
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        .btn-primary:hover {
+            box-shadow: 0 5px 30px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+        }
+
+        /* ==================== STUDY SCREEN ==================== */
+        .study-header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            padding: 15px 30px;
+            background: rgba(26, 26, 46, 0.9);
+            backdrop-filter: blur(10px);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 100;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .study-info {
+            display: flex;
+            gap: 30px;
+            font-size: 0.9rem;
+        }
+
+        .study-info span {
+            opacity: 0.7;
+        }
+
+        .study-info strong {
+            color: #667eea;
+        }
+
+        .trial-badge {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-weight: 600;
+        }
+
+        .study-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: -20px;
+            padding-top: 80px;
+            width: 100%;
+        }
+
+        /* ==================== 3D PREVIEW ==================== */
+        .preview-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .preview-label {
+            font-size: 0.9rem;
+            opacity: 0.6;
+        }
+
+        .preview-3d {
+            width: 350px;
+            height: 350px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 20px;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .preview-grid {
+            position: absolute;
+            inset: 0;
+            background-image: 
+                linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+            background-size: 35px 35px;
+            transition: background-color 0.3s ease, background-image 0.3s ease;
+        }
+
+        .preview-3d.within-tolerance {
+            border-color: #4ade80;
+            box-shadow: 0 0 30px rgba(74, 222, 128, 0.35);
+        }
+
+        .preview-3d.within-tolerance .preview-grid {
+            background-color: rgba(74, 222, 128, 0.12);
+            background-image: 
+                linear-gradient(rgba(74,222,128,0.18) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(74,222,128,0.18) 1px, transparent 1px);
+        }
+
+        .preview-crosshair::before,
+        .preview-crosshair::after {
+            content: '';
+            position: absolute;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .preview-crosshair::before {
+            top: 50%;
+            left: 0;
+            right: 0;
+            height: 1px;
+        }
+
+        .preview-crosshair::after {
+            left: 50%;
+            top: 0;
+            bottom: 0;
+            width: 1px;
+        }
+
+        .target-object {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 50px;
+            height: 50px;
+            border: 3px dashed #ffd700;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
+            transition: all 0.4s ease-out;
+        }
+
+        .target-label {
+            position: absolute;
+            top: -25px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 0.7rem;
+            color: #ffd700;
+            white-space: nowrap;
+        }
+
+        .user-object {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 50px;
+            height: 50px;
+            background: radial-gradient(circle at 30% 30%, #a78bfa, #667eea);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 0 30px rgba(102, 126, 234, 0.5);
+            transition: width 0.2s, height 0.2s, transform 0.12s ease-out;
+        }
+
+        /* ==================== VALUES DISPLAY ==================== */
+        .values-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            margin-top: 0px;
+            width: 100%;
+        }
+
+        .value-group {
+            text-align: center;
+            width: 100%;
+            max-width: 360px;
+        }
+
+        .value-row {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+        }
+
+        .value-group .label {
+            font-size: 0.75rem;
+            opacity: 0.5;
+            margin-bottom: 5px;
+        }
+
+        .value-row {
+            display: flex;
+            gap: 15px;
+        }
+
+        .value-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-family: 'SF Mono', 'Fira Code', monospace;
+        }
+
+        .value-item .axis {
+            font-weight: 700;
+            font-size: 0.9rem;
+        }
+
+        .value-item .axis.x { color: #f87171; }
+        .value-item .axis.y { color: #4ade80; }
+        .value-item .axis.z { color: #60a5fa; }
+
+        .value-item .num {
+            min-width: 40px;
+            text-align: right;
+        }
+
+        .target-values {
+            opacity: 0;
+        }
+
+        /* ==================== CONTROL PADS ==================== */
+        .controls-section {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .pad-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .pad-label {
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .pad-label.minus { color: #facc15; }
+        .pad-label.plus { color: #facc15; }
+
+        .control-pad {
+            position: relative;
+            width: 220px;
+            height: 220px;
+            cursor: pointer;
+        }
+
+        /* Zonen */
+        .zone {
+            position: absolute;
+            border-radius: 50%;
+            transition: all 0.2s ease;
+        }
+
+        /* Linkes Pad (X/Y) */
+        .pad-minus .zone-outer {
+            inset: 0;
+            background: radial-gradient(circle, transparent 60%, rgba(250, 204, 21, 0.12) 100%);
+            border: 2px solid rgba(250, 204, 21, 0.35);
+        }
+
+        .pad-minus .zone-middle {
+            top: 20%;
+            left: 20%;
+            width: 60%;
+            height: 60%;
+            background: radial-gradient(circle, transparent 50%, rgba(250, 204, 21, 0.18) 100%);
+            border: 2px solid rgba(250, 204, 21, 0.4);
+        }
+
+        .pad-minus .zone-inner {
+            top: 38%;
+            left: 38%;
+            width: 24%;
+            height: 24%;
+            background: rgba(250, 204, 21, 0.25);
+            border: 2px solid rgba(250, 204, 21, 0.55);
+        }
+
+        /* Rechtes Pad (Z) */
+        .pad-plus .zone-outer {
+            top: 0;
+            left: 50%;
+            width: 30px;
+            height: 100%;
+            transform: translateX(-50%);
+            background: linear-gradient(180deg, transparent 20%, rgba(250, 204, 21, 0.08) 20%, rgba(250, 204, 21, 0.08) 80%, transparent 80%);
+            border: 2px solid rgba(250, 204, 21, 0.3);
+            border-radius: 15px;
+        }
+
+        .pad-plus .zone-middle {
+            top: 15%;
+            left: 50%;
+            width: 30px;
+            height: 70%;
+            transform: translateX(-50%);
+            background: linear-gradient(180deg, transparent 20%, rgba(250, 204, 21, 0.15) 20%, rgba(250, 204, 21, 0.15) 80%, transparent 80%);
+            border: 2px solid rgba(250, 204, 21, 0.4);
+            border-radius: 12px;
+        }
+
+        .pad-plus .zone-inner {
+            top: 40%;
+            left: 50%;
+            width: 30px;
+            height: 20%;
+            transform: translateX(-50%);
+            background: rgba(250, 204, 21, 0.2);
+            border: 2px solid rgba(250, 204, 21, 0.55);
+            border-radius: 10px;
+        }
+
+        /* Zone Labels */
+        .zone-label {
+            position: absolute;
+            font-size: 0.65rem;
+            font-weight: 600;
+            pointer-events: none;
+            opacity: 0.7;
+            color: #facc15;
+        }
+
+        .pad-plus .axis-track {
+            position: absolute;
+            top: 10%;
+            bottom: 10%;
+            left: 50%;
+            width: 4px;
+            transform: translateX(-50%);
+            background: rgba(250, 204, 21, 0.3);
+            border-radius: 4px;
+        }
+
+        .zone-label.top-label { top: 5px; left: 50%; transform: translateX(-50%); }
+        .zone-label.bottom-label { bottom: 5px; left: 50%; transform: translateX(-50%); }
+        .zone-label.left-label { left: 5px; top: 50%; transform: translateY(-50%); }
+        .zone-label.right-label { right: 5px; top: 50%; transform: translateY(-50%); }
+        .zone-label.inner-label { bottom: 5px; left: 50%; transform: translateX(-50%); font-size: 0.6rem; }
+
+        /* Active states */
+        .zone.active {
+            box-shadow: 0 0 30px currentColor;
+        }
+
+        .pad-minus .zone.active { 
+            border-color: #facc15 !important;
+            box-shadow: 0 0 30px rgba(250, 204, 21, 0.5);
+        }
+
+        .pad-plus .zone.active { 
+            border-color: #facc15 !important;
+            box-shadow: 0 0 30px rgba(250, 204, 21, 0.5);
+        }
+
+        /* Touch Indicator */
+        .touch-indicator {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: #fff;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            opacity: 0;
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.8);
+            z-index: 10;
+            transition: opacity 0.1s;
+        }
+
+        .touch-indicator.active {
+            opacity: 1;
+        }
+
+        /* ==================== CONFIRM BUTTON ==================== */
+        .confirm-section {
+            margin-top: 20px;
+        }
+
+        .btn-confirm {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: #fff;
+            padding: 16px 60px;
+            font-size: 1.1rem;
+            border-radius: 12px;
+        }
+
+        .btn-confirm:hover {
+            box-shadow: 0 5px 30px rgba(102, 126, 234, 0.5);
+        }
+
+        /* ==================== FEEDBACK ==================== */
+        .feedback {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            padding: 30px 60px;
+            border-radius: 20px;
+            font-size: 1.5rem;
+            font-weight: 700;
+            z-index: 200;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+        }
+
+        .feedback.show {
+            opacity: 1;
+        }
+
+        .feedback.success {
+            background: rgba(74, 222, 128, 0.9);
+            color: #fff;
+        }
+
+        .feedback.info {
+            background: rgba(102, 126, 234, 0.9);
+            color: #fff;
+        }
+
+        /* ==================== RESULTS SCREEN ==================== */
+        .results-container {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            min-width: 500px;
+            max-width: 700px;
+        }
+
+        .results-container h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .results-grid {
+            display: grid;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .result-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .result-row span:first-child {
+            opacity: 0.7;
+        }
+
+        .result-row span:last-child {
+            font-weight: 600;
+            color: #667eea;
+        }
+
+        .result-row.highlight span:last-child {
+            color: #4ade80;
+            font-size: 1.1rem;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+        }
+
+        /* ==================== INSTRUCTIONS ==================== */
+        .instructions {
+            text-align: center;
+            font-size: 0.8rem;
+            opacity: 0.5;
+            max-width: 600px;
+            line-height: 1.6;
+            margin-top: 30px;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ==================== SETUP SCREEN ==================== -->
+    <div class="screen active" id="setupScreen">
+        <div class="setup-container">
+            <h1>Separierte Steuerungsfelder</h1>
+            <p class="subtitle">1-Finger 3D Translation mit dualen Steuerpads</p>
+
+            <div class="form-group">
+                <label>Teilnehmer-ID</label>
+                <input type="text" id="participantId" placeholder="z.B. P001">
+            </div>
+
+            <div class="form-group">
+                <label>Anzahl Trials</label>
+                <select id="trialCount">
+                    <option value="3">3 (Test)</option>
+                    <option value="5">5</option>
+                    <option value="10" selected>10</option>
+                    <option value="15">15</option>
+                    <option value="20">20</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Schwierigkeit</label>
+                <select id="difficulty">
+                    <option value="easy">Leicht (große Toleranz)</option>
+                    <option value="medium" selected>Mittel</option>
+                    <option value="hard">Schwer (kleine Toleranz)</option>
+                </select>
+            </div>
+
+            <button class="btn btn-primary" id="startStudy">Studie starten</button>
+        </div>
+    </div>
+
+    <!-- ==================== STUDY SCREEN ==================== -->
+    <div class="screen" id="studyScreen">
+        <div class="study-header">
+            <div class="study-info">
+                <span>ID: <strong id="displayId">-</strong></span>
+                <span>Schwierigkeit: <strong id="displayDifficulty">-</strong></span>
+            </div>
+            <div class="trial-badge">
+                Trial <span id="trialCurrent">1</span> / <span id="trialTotal">10</span>
+            </div>
+            <button class="btn btn-secondary" id="abortStudy">Abbrechen</button>
+        </div>
+
+        <div class="study-content">
+            <!-- 3D Preview -->
+            <div class="preview-section">
+                <span class="preview-label">Bewege den Kreis zum Ziel</span>
+                <div class="preview-3d" id="preview">
+                    <div class="preview-grid"></div>
+                    <div class="preview-crosshair"></div>
+                    <div class="target-object" id="targetObject">
+                        <span class="target-label">ZIEL</span>
+                    </div>
+                    <div class="user-object" id="userObject"></div>
+                </div>
+
+                <!-- Values -->
+                <div class="values-container">
+                    <div class="value-group">
+                        <div class="label">Aktuell</div>
+                        <div class="value-row">
+                            <div class="value-item"><span class="axis x">X</span><span class="num" id="valX">0</span></div>
+                            <div class="value-item"><span class="axis y">Y</span><span class="num" id="valY">0</span></div>
+                            <div class="value-item"><span class="axis z">Z</span><span class="num" id="valZ">0</span></div>
+                        </div>
+                    </div>
+                    <div class="value-group target-values">
+                        <div class="label">Ziel</div>
+                        <div class="value-row">
+                            <div class="value-item"><span class="axis x">X</span><span class="num" id="targetX">0</span></div>
+                            <div class="value-item"><span class="axis y">Y</span><span class="num" id="targetY">0</span></div>
+                            <div class="value-item"><span class="axis z">Z</span><span class="num" id="targetZ">0</span></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Control Pads -->
+            <div class="controls-section">
+                <!-- Left Pad (X/Y) -->
+                <div class="pad-container">
+                    <span class="pad-label minus">X/Y-Steuerung</span>
+                    <div class="control-pad pad-minus" id="padMinus">
+                        <div class="zone zone-outer" data-zone="outer"></div>
+                        <div class="zone zone-middle" data-zone="middle"></div>
+                        <div class="zone zone-inner" data-zone="inner"></div>
+                        <span class="zone-label top-label">+Y</span>
+                        <span class="zone-label left-label">-X</span>
+                        <span class="zone-label right-label">+X</span>
+                        <span class="zone-label bottom-label">-Y</span>
+                        <div class="touch-indicator" id="indicatorMinus"></div>
+                    </div>
+                </div>
+
+                <!-- Right Pad (Z-Achse) -->
+                <div class="pad-container">
+                    <span class="pad-label plus">Z-Achse</span>
+                    <div class="control-pad pad-plus" id="padPlus">
+                        <div class="axis-track"></div>
+                        <div class="zone zone-outer" data-zone="outer"></div>
+                        <div class="zone zone-middle" data-zone="middle"></div>
+                        <div class="zone zone-inner" data-zone="inner"></div>
+                        <span class="zone-label top-label">+Z</span>
+                        <span class="zone-label bottom-label">-Z</span>
+                        <div class="touch-indicator" id="indicatorPlus"></div>
+                    </div>
+                </div>
+            </div>
+
+            <p class="instructions">
+                <strong>Links:</strong> X/Y-Steuerung per Pad-Bewegung<br>
+                <strong>Rechts:</strong> Z über vertikale Achse steuern
+            </p>
+        </div>
+    </div>
+
+    <!-- ==================== RESULTS SCREEN ==================== -->
+    <div class="screen" id="resultsScreen">
+        <div class="results-container">
+            <h1>📊 Studie abgeschlossen</h1>
+            <div class="results-grid" id="resultsGrid"></div>
+            <div class="btn-group">
+                <button class="btn btn-secondary" id="exportData">💾 Daten exportieren</button>
+                <button class="btn btn-primary" id="newStudy">🔄 Neue Studie</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Feedback Overlay -->
+    <div class="feedback" id="feedback"></div>
+
+    <script>
+
+    // ╔══════════════════════════════════════════════════════════════════════╗
+    // ║                      STEUERUNGSLOGIK                                ║
+    // ║  ► NUR DIESER BLOCK WIRD FÜR NEUE VARIANTEN VERÄNDERT ◄             ║
+    // ║                                                                      ║
+    // ║  Varianten-Name  : Basisvariante (Dual-Pad)                         ║
+    // ║  Beschreibung    : Linkes Pad steuert X/Y per 2D-Joystick,          ║
+    // ║                    rechtes Pad steuert Z über vertikale Achse.      ║
+    // ║  Zonen-Logik     : inner / middle → xyMiddleSpeedFactor,            ║
+    // ║                    outer → volle Geschwindigkeit                    ║
+    // ╚══════════════════════════════════════════════════════════════════════╝
+
+        // ------------------------------------------------------------------
+        // 1) PARAMETER
+        //    Alle Geschwindigkeiten, Zonen-Radien und Grenzwerte hier ändern.
+        // ------------------------------------------------------------------
+        const config = {
+            maxRange:            100,   // Wertebereich aller Achsen: [-maxRange, +maxRange]
+            xySpeed:             40,    // Grundgeschwindigkeit X/Y (Einheiten/s)
+            xyMiddleSpeedFactor: 0.75,  // Geschwindigkeitsfaktor in der Mittelzone
+            zSpeed:              20,    // Grundgeschwindigkeit Z (Einheiten/s)
+            zMin:               -50,    // Minimum für Z-Achse
+
+            // Darstellung des Objekts im Vorschaufenster
+            baseSize:   50,             // Basisgröße des Kreises in px
+            minScale:    0.3,
+            maxScale:    2.5,
+
+            // Treffertoleranz je Schwierigkeitsstufe (Euklidische Distanz)
+            tolerance: { easy: 25, medium: 15, hard: 8 },
+
+            // Innerhalb dieser Einzel-Achsen-Toleranz gilt die Position als "nah"
+            toleranceThreshold: 3,
+
+            // Wie lange muss die Position gehalten werden, um den Trial abzuschließen (ms)
+            toleranceHoldTime: 1000,
+
+            // Zielgenerierung (wird in generatePredefinedTargets verwendet)
+            targetRangeFactor: 0.4,
+            targetMinMargin:   12
+        };
+
+        // ------------------------------------------------------------------
+        // 2) PAD-GEOMETRIE  (Zonen-Radien als Anteil des Außenradius)
+        //    Ändere die Faktoren, um die Zonengrenzen zu verschieben.
+        // ------------------------------------------------------------------
+        function updatePadGeometry() {
+            padMinusRect   = dom.study.padMinus.getBoundingClientRect();
+            padPlusRect    = dom.study.padPlus.getBoundingClientRect();
+
+            padMinusCenter = {
+                x: padMinusRect.left + padMinusRect.width  / 2,
+                y: padMinusRect.top  + padMinusRect.height / 2
+            };
+            padPlusCenter = {
+                x: padPlusRect.left + padPlusRect.width  / 2,
+                y: padPlusRect.top  + padPlusRect.height / 2
+            };
+
+            outerRadius  = padMinusRect.width / 2;
+            middleRadius = outerRadius * 0.60;  // ← Grenze middle/outer
+            innerRadius  = outerRadius * 0.24;  // ← Grenze inner/middle
+        }
+
+        // ------------------------------------------------------------------
+        // 3) ZONEN-KLASSIFIKATION
+        //    Gibt 'inner' | 'middle' | 'outer' zurück.
+        //    Kann z.B. auf andere Geometrien (Sektoren, Rechtecke …) erweitert werden.
+        // ------------------------------------------------------------------
+        function getZone(distance) {
+            if (distance <= innerRadius)  return 'inner';
+            if (distance <= middleRadius) return 'middle';
+            if (distance <= outerRadius)  return 'outer';
+            return null;
+        }
+
+        // ------------------------------------------------------------------
+        // 4) PAD-TREFFER-ERKENNUNG
+        //    Entscheidet, welches Pad berührt wird, und liefert Kontext.
+        //    Rückgabe: { pad, dx, dy, distance, zone, rect, indicator, element }
+        //              oder null wenn außerhalb beider Pads.
+        // ------------------------------------------------------------------
+        function getPadInfo(clientX, clientY) {
+            // Minus-Pad prüfen
+            const dxMinus   = clientX - padMinusCenter.x;
+            const dyMinus   = clientY - padMinusCenter.y;
+            const distMinus = Math.sqrt(dxMinus * dxMinus + dyMinus * dyMinus);
+
+            if (distMinus <= outerRadius) {
+                return {
+                    pad:       'minus',
+                    dx:        dxMinus,
+                    dy:        dyMinus,
+                    distance:  distMinus,
+                    zone:      getZone(distMinus),
+                    rect:      padMinusRect,
+                    indicator: dom.study.indicatorMinus,
+                    element:   dom.study.padMinus
+                };
+            }
+
+            // Plus-Pad prüfen
+            const dxPlus   = clientX - padPlusCenter.x;
+            const dyPlus   = clientY - padPlusCenter.y;
+            const distPlus = Math.sqrt(dxPlus * dxPlus + dyPlus * dyPlus);
+
+            if (distPlus <= outerRadius) {
+                return {
+                    pad:       'plus',
+                    dx:        dxPlus,
+                    dy:        dyPlus,
+                    distance:  distPlus,
+                    zone:      getZone(distPlus),
+                    rect:      padPlusRect,
+                    indicator: dom.study.indicatorPlus,
+                    element:   dom.study.padPlus
+                };
+            }
+
+            return null;
+        }
+
+        // ------------------------------------------------------------------
+        // 5) EINGABE → BEWEGUNGSVEKTOR
+        //    Setzt state.moveDirection und state.zDirection basierend auf
+        //    der Fingerposition auf dem Pad.
+        //
+        //    ► HAUPTANSATZPUNKT FÜR VARIANTEN ◄
+        //    Hier lässt sich z.B. ändern:
+        //      - Welches Pad welche Achsen steuert
+        //      - Ob alle 3 Achsen auf einem Pad liegen
+        //      - Nichtlineare Kurven (z.B. quadratisch, exponentiell)
+        //      - Relativer vs. absoluter Modus
+        //      - Sektor-basierte statt kontinuierliche Steuerung
+        // ------------------------------------------------------------------
+        function updateFromPad(info) {
+            const { pad, dx, dy, zone, rect, indicator, element } = info;
+
+            // Touch-Indikator positionieren
+            indicator.style.left = (dx + rect.width  / 2) + 'px';
+            indicator.style.top  = (dy + rect.height / 2) + 'px';
+            indicator.classList.add('active');
+
+            // Zonen-Highlights aktualisieren
+            document.querySelectorAll('.zone').forEach(z => z.classList.remove('active'));
+            const activeZone = element.querySelector(`.zone-${zone}`);
+            if (activeZone) activeZone.classList.add('active');
+
+            if (pad === 'minus') {
+                // Linkes Pad: normierte X/Y-Richtung aus 2D-Joystick-Position
+                const normalizedX =  Math.max(-1, Math.min(1,  dx / outerRadius));
+                const normalizedY =  Math.max(-1, Math.min(1, -dy / outerRadius));
+                state.moveDirection = { x: normalizedX, y: normalizedY };
+                state.zDirection    = 0;
+
+            } else if (pad === 'plus') {
+                // Rechtes Pad: Z-Richtung aus vertikaler Fingerbewegung
+                state.moveDirection = { x: 0, y: 0 };
+                state.zDirection    = Math.max(-1, Math.min(1, -dy / outerRadius));
+            }
+
+            state.activePad  = pad;
+            state.activeZone = zone;
+        }
+
+        // ------------------------------------------------------------------
+        // 6) BEWEGUNGSBERECHNUNG (Frame-Loop)
+        //    Aktualisiert state.pos je Frame auf Basis der gesetzten Vektoren.
+        //
+        //    ► ZWEITER HAUPTANSATZPUNKT FÜR VARIANTEN ◄
+        //    Hier lässt sich z.B. ändern:
+        //      - Beschleunigung / Trägheit (Acceleration / Inertia)
+        //      - Dynamische Geschwindigkeit in Abhängigkeit von Zone
+        //      - Discret-Snap-Steuerung
+        //      - Kombinierte Achsenlogiken
+        // ------------------------------------------------------------------
+        function animateMovement(timestamp) {
+            if (!isTouching) return;
+            if (!lastFrameTimestamp) lastFrameTimestamp = timestamp;
+
+            const dt = Math.min(0.05, (timestamp - lastFrameTimestamp) / 1000);
+            lastFrameTimestamp = timestamp;
+
+            if (state.activePad === 'minus') {
+                // Geschwindigkeitsfaktor je nach Zone
+                const speedFactor   = state.activeZone === 'middle' ? config.xyMiddleSpeedFactor : 1;
+                const movementSpeed = config.xySpeed * speedFactor * dt;
+
+                state.pos.x = Math.max(-config.maxRange, Math.min(config.maxRange,
+                    state.pos.x + state.moveDirection.x * movementSpeed));
+                state.pos.y = Math.max(-config.maxRange, Math.min(config.maxRange,
+                    state.pos.y + state.moveDirection.y * movementSpeed));
+            }
+
+            if (state.activePad === 'plus') {
+                state.pos.z = Math.max(config.zMin, Math.min(config.maxRange,
+                    state.pos.z + state.zDirection * config.zSpeed * dt));
+            }
+
+            updateDisplay();
+            animationId = requestAnimationFrame(animateMovement);
+        }
+
+    // ╔══════════════════════════════════════════════════════════════════════╗
+    // ║              ENDE DER STEUERUNGSLOGIK                               ║
+    // ╚══════════════════════════════════════════════════════════════════════╝
+
+
+    // ======================================================================
+    // AB HIER: STUDIE, DARSTELLUNG, EVENTS — NICHT VERÄNDERN
+    // ======================================================================
+
+        // ==================== STATE ====================
+        const state = {
+            participantId: '',
+            difficulty: 'medium',
+            totalTrials: 10,
+            currentTrial: 0,
+            trials: [],
+            trialStartTime: 0,
+            pos: { x: 0, y: 0, z: 0 },
+            target: { x: 0, y: 0, z: 0 },
+            predefinedTargets: [],
+            inputLog: [],
+            activePad: null,
+            moveDirection: { x: 0, y: 0 },
+            zDirection: 0,
+            toleranceTimer: null,
+            trialCompleting: false
+        };
+
+        // ==================== DOM ====================
+        const $ = id => document.getElementById(id);
+
+        const dom = {
+            screens: {
+                setup:   $('setupScreen'),
+                study:   $('studyScreen'),
+                results: $('resultsScreen')
+            },
+            setup: {
+                participantId: $('participantId'),
+                trialCount:    $('trialCount'),
+                difficulty:    $('difficulty'),
+                startBtn:      $('startStudy')
+            },
+            study: {
+                displayId:         $('displayId'),
+                displayDifficulty: $('displayDifficulty'),
+                trialCurrent:      $('trialCurrent'),
+                trialTotal:        $('trialTotal'),
+                preview:           $('preview'),
+                targetObject:      $('targetObject'),
+                userObject:        $('userObject'),
+                valX:              $('valX'),
+                valY:              $('valY'),
+                valZ:              $('valZ'),
+                targetX:           $('targetX'),
+                targetY:           $('targetY'),
+                targetZ:           $('targetZ'),
+                padMinus:          $('padMinus'),
+                padPlus:           $('padPlus'),
+                indicatorMinus:    $('indicatorMinus'),
+                indicatorPlus:     $('indicatorPlus'),
+                abortBtn:          $('abortStudy')
+            },
+            results: {
+                grid:      $('resultsGrid'),
+                exportBtn: $('exportData'),
+                newBtn:    $('newStudy')
+            },
+            feedback: $('feedback')
+        };
+
+        // ==================== SCREENS ====================
+        function showScreen(name) {
+            Object.values(dom.screens).forEach(s => s.classList.remove('active'));
+            dom.screens[name].classList.add('active');
+        }
+
+        function showFeedback(message, type = 'info', duration = 1000) {
+            dom.feedback.textContent = message;
+            dom.feedback.className = `feedback ${type} show`;
+            setTimeout(() => {
+                dom.feedback.classList.remove('show');
+            }, duration);
+        }
+
+        // ==================== STUDY LOGIC ====================
+        function generatePredefinedTargets() {
+            state.predefinedTargets = [
+                { x: 60, y: 10, z: -10 },
+                { x: -60, y: 20, z: 10 },
+                { x: 50, y: -30, z: 20 },
+                { x: -50, y: 30, z: -20 },
+                { x: 30, y: 40, z: 60 },
+                { x: -30, y: -40, z: -50 },
+                { x: 45, y: 20, z: 35 },
+                { x: -45, y: -25, z: -35 },
+                { x: 20, y: 50, z: -45 },
+                { x: -20, y: -50, z: 45 },
+                { x: 10, y: 30, z: 50 },
+                { x: -10, y: -30, z: -50 },
+                { x: 35, y: 55, z: -25 },
+                { x: -35, y: -55, z: 25 },
+                { x: 25, y: 15, z: 35 },
+                { x: -25, y: -15, z: -35 },
+                { x: 40, y: -10, z: 20 },
+                { x: -40, y: 10, z: -20 },
+                { x: 30, y: -50, z: 45 },
+                { x: -30, y: 50, z: -45 }
+            ];
+        }
+
+        function startStudy() {
+            state.participantId = dom.setup.participantId.value.trim() || `P${Date.now()}`;
+            state.difficulty    = dom.setup.difficulty.value;
+            state.currentTrial  = 0;
+            state.trials        = [];
+
+            generatePredefinedTargets();
+            state.totalTrials = Math.min(parseInt(dom.setup.trialCount.value), state.predefinedTargets.length);
+
+            dom.study.displayId.textContent         = state.participantId;
+            dom.study.displayDifficulty.textContent = state.difficulty;
+            dom.study.trialTotal.textContent        = state.totalTrials;
+
+            showScreen('study');
+            setTimeout(() => nextTrial(), 500);
+        }
+
+        function nextTrial() {
+            state.currentTrial++;
+
+            if (state.currentTrial > state.totalTrials) {
+                endStudy();
+                return;
+            }
+
+            state.pos      = { x: 0, y: 0, z: 0 };
+            state.inputLog = [];
+            state.target   = { ...state.predefinedTargets[state.currentTrial - 1] };
+
+            state.trialStartTime  = performance.now();
+            state.trialCompleting = false;
+            clearToleranceTimer();
+
+            dom.study.trialCurrent.textContent = state.currentTrial;
+            dom.study.targetX.textContent      = state.target.x;
+            dom.study.targetY.textContent      = state.target.y;
+            dom.study.targetZ.textContent      = state.target.z;
+
+            updateDisplay();
+            updateTarget();
+            showFeedback(`Trial ${state.currentTrial}`, 'info', 800);
+        }
+
+        function clearToleranceTimer() {
+            if (state.toleranceTimer) {
+                clearTimeout(state.toleranceTimer);
+                state.toleranceTimer = null;
+            }
+        }
+
+        function scheduleToleranceCompletion() {
+            if (state.toleranceTimer || state.trialCompleting) return;
+            state.toleranceTimer = setTimeout(() => {
+                state.toleranceTimer = null;
+                confirmTrial();
+            }, config.toleranceHoldTime);
+        }
+
+        function updateToleranceState() {
+            const withinTolerance =
+                Math.abs(state.pos.x - state.target.x) <= config.toleranceThreshold &&
+                Math.abs(state.pos.y - state.target.y) <= config.toleranceThreshold &&
+                Math.abs(state.pos.z - state.target.z) <= config.toleranceThreshold;
+
+            dom.study.preview.classList.toggle('within-tolerance', withinTolerance);
+
+            if (withinTolerance && !isTouching) {
+                scheduleToleranceCompletion();
+            } else {
+                clearToleranceTimer();
+            }
+        }
+
+        function confirmTrial() {
+            if (state.trialCompleting) return;
+            state.trialCompleting = true;
+            clearToleranceTimer();
+
+            const endTime  = performance.now();
+            const duration = endTime - state.trialStartTime;
+
+            const error = {
+                x:     Math.abs(state.pos.x - state.target.x),
+                y:     Math.abs(state.pos.y - state.target.y),
+                z:     Math.abs(state.pos.z - state.target.z),
+                total: Math.sqrt(
+                    Math.pow(state.pos.x - state.target.x, 2) +
+                    Math.pow(state.pos.y - state.target.y, 2) +
+                    Math.pow(state.pos.z - state.target.z, 2)
+                )
+            };
+
+            const tolerance = config.tolerance[state.difficulty];
+            const success   = error.total <= tolerance;
+
+            state.trials.push({
+                trial:     state.currentTrial,
+                target:    { ...state.target },
+                result:    { ...state.pos },
+                error,
+                duration,
+                success,
+                inputLog:  [...state.inputLog],
+                timestamp: new Date().toISOString()
+            });
+
+            showFeedback(
+                success ? '✓ Treffer!' : `Abweichung: ${error.total.toFixed(1)}`,
+                success ? 'success' : 'info',
+                1000
+            );
+
+            setTimeout(() => nextTrial(), 1200);
+        }
+
+        function endStudy() {
+            const successCount = state.trials.filter(t => t.success).length;
+            const avgError     = state.trials.reduce((sum, t) => sum + t.error.total, 0) / state.trials.length;
+            const avgTime      = state.trials.reduce((sum, t) => sum + t.duration,    0) / state.trials.length;
+            const totalTime    = state.trials.reduce((sum, t) => sum + t.duration,    0);
+
+            dom.results.grid.innerHTML = `
+                <div class="result-row"><span>Teilnehmer-ID</span><span>${state.participantId}</span></div>
+                <div class="result-row"><span>Schwierigkeit</span><span>${state.difficulty}</span></div>
+                <div class="result-row"><span>Anzahl Trials</span><span>${state.totalTrials}</span></div>
+                <div class="result-row highlight"><span>Erfolgreiche Treffer</span><span>${successCount} / ${state.totalTrials} (${Math.round(successCount/state.totalTrials*100)}%)</span></div>
+                <div class="result-row"><span>Ø Fehler (Distanz)</span><span>${avgError.toFixed(1)}</span></div>
+                <div class="result-row"><span>Ø Zeit pro Trial</span><span>${(avgTime  / 1000).toFixed(2)}s</span></div>
+                <div class="result-row"><span>Gesamtzeit</span><span>${(totalTime / 1000).toFixed(1)}s</span></div>
+            `;
+
+            showScreen('results');
+        }
+
+        async function exportData() {
+        // CSV-Header
+        const csvHeader = 'Teilnehmer-ID;Anzahl_Trials;Schwierigkeit;Trial_Nr;Zeit_ms;Zeit_s\n';
+
+        // CSV-Zeilen: eine Zeile pro Trial
+        const csvRows = state.trials.map(t => {
+            return [
+                state.participantId,
+                state.totalTrials,
+                state.difficulty,
+                t.trial,
+                Math.round(t.duration),
+                (t.duration / 1000).toFixed(2)
+            ].join(';');
+        }).join('\n');
+
+        const csvContent = csvHeader + csvRows;
+
+        if (window.studyAPI) {
+            // Falls eine native API vorhanden ist (z.B. Electron)
+            const filepath = await window.studyAPI.saveData(csvContent);
+            showFeedback('Gespeichert!', 'success', 2000);
+            alert(`Daten gespeichert:\n${filepath}`);
+        } else {
+            // Browser-Download als CSV
+            const BOM = '\uFEFF'; // UTF-8 BOM für korrekte Umlaute in Excel
+            const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url  = URL.createObjectURL(blob);
+            const a    = document.createElement('a');
+            a.href     = url;
+            a.download = `mst-v2-studie-${state.participantId}-${Date.now()}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+}
+
+        // ==================== CONTROL PAD RUNTIME ====================
+        let padMinusRect, padPlusRect, padMinusCenter, padPlusCenter;
+        let outerRadius, middleRadius, innerRadius;
+        let isTouching        = false;
+        let animationId       = null;
+        let lastFrameTimestamp = 0;
+
+        function startTouch(clientX, clientY) {
+            updatePadGeometry();
+            const info = getPadInfo(clientX, clientY);
+            if (!info) return;
+
+            isTouching = true;
+            clearToleranceTimer();
+            updateFromPad(info);
+            updateDisplay();
+
+            state.inputLog.push({
+                t:     performance.now() - state.trialStartTime,
+                event: 'start',
+                pad:   info.pad,
+                zone:  info.zone,
+                pos:   { ...state.pos }
+            });
+
+            if (animationId) cancelAnimationFrame(animationId);
+            lastFrameTimestamp = 0;
+            animationId = requestAnimationFrame(animateMovement);
+        }
+
+        function moveTouch(clientX, clientY) {
+            if (!isTouching) return;
+
+            const info = getPadInfo(clientX, clientY);
+            if (info) {
+                clearToleranceTimer();
+                if (info.pad === 'minus') {
+                    dom.study.indicatorPlus.classList.remove('active');
+                } else {
+                    dom.study.indicatorMinus.classList.remove('active');
+                }
+                updateFromPad(info);
+                updateDisplay();
+            }
+        }
+
+        function endTouch() {
+            isTouching          = false;
+            state.activePad     = null;
+            state.activeZone    = null;
+            state.moveDirection = { x: 0, y: 0 };
+            lastFrameTimestamp  = 0;
+
+            if (animationId) {
+                cancelAnimationFrame(animationId);
+                animationId = null;
+            }
+
+            dom.study.indicatorMinus.classList.remove('active');
+            dom.study.indicatorPlus.classList.remove('active');
+            document.querySelectorAll('.zone').forEach(z => z.classList.remove('active'));
+
+            updateToleranceState();
+
+            state.inputLog.push({
+                t:     performance.now() - state.trialStartTime,
+                event: 'end',
+                pos:   { ...state.pos }
+            });
+        }
+
+        // ==================== DISPLAY ====================
+        function updateDisplay() {
+            dom.study.valX.textContent = Math.round(state.pos.x);
+            dom.study.valY.textContent = Math.round(state.pos.y);
+            dom.study.valZ.textContent = Math.round(state.pos.z);
+
+            const preview    = dom.study.preview;
+            const previewRect = preview.getBoundingClientRect();
+            const previewW   = previewRect.width;
+            const previewH   = previewRect.height;
+
+            const offsetX = ( state.pos.x / config.maxRange) * (previewW / 2 - 50);
+            const offsetY = (-state.pos.y / config.maxRange) * (previewH / 2 - 50);
+
+            const scale        = 1 + (state.pos.z / config.maxRange) * (config.maxScale - 1);
+            const clampedScale = Math.max(config.minScale, Math.min(config.maxScale, scale));
+            const size         = config.baseSize * clampedScale;
+
+            dom.study.userObject.style.width     = size + 'px';
+            dom.study.userObject.style.height    = size + 'px';
+            dom.study.userObject.style.transform = `translate(calc(-50% + ${offsetX}px), calc(-50% + ${offsetY}px))`;
+            updateToleranceState();
+        }
+
+        function updateTarget() {
+            const preview    = dom.study.preview;
+            const previewRect = preview.getBoundingClientRect();
+            const previewW   = previewRect.width;
+            const previewH   = previewRect.height;
+
+            const offsetX = ( state.target.x / config.maxRange) * (previewW / 2 - 50);
+            const offsetY = (-state.target.y / config.maxRange) * (previewH / 2 - 50);
+
+            const scale        = 1 + (state.target.z / config.maxRange) * (config.maxScale - 1);
+            const clampedScale = Math.max(config.minScale, Math.min(config.maxScale, scale));
+            const size         = config.baseSize * clampedScale;
+
+            dom.study.targetObject.style.width     = size + 'px';
+            dom.study.targetObject.style.height    = size + 'px';
+            dom.study.targetObject.style.transform = `translate(calc(-50% + ${offsetX}px), calc(-50% + ${offsetY}px))`;
+        }
+
+        // ==================== EVENTS ====================
+        dom.setup.startBtn.addEventListener('click', startStudy);
+        dom.study.abortBtn.addEventListener('click', () => showScreen('setup'));
+        dom.results.exportBtn.addEventListener('click', exportData);
+        dom.results.newBtn.addEventListener('click', () => showScreen('setup'));
+
+        [dom.study.padMinus, dom.study.padPlus].forEach(pad => {
+            pad.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                startTouch(e.touches[0].clientX, e.touches[0].clientY);
+            });
+            pad.addEventListener('touchmove', (e) => {
+                e.preventDefault();
+                moveTouch(e.touches[0].clientX, e.touches[0].clientY);
+            });
+            pad.addEventListener('touchend',   endTouch);
+            pad.addEventListener('touchcancel', endTouch);
+            pad.addEventListener('mousedown', (e) => {
+                startTouch(e.clientX, e.clientY);
+            });
+        });
+
+        window.addEventListener('mousemove', (e) => { moveTouch(e.clientX, e.clientY); });
+        window.addEventListener('mouseup',   endTouch);
+        window.addEventListener('resize', () => {
+            updatePadGeometry();
+            updateDisplay();
+            updateTarget();
+        });
+
+        // Initialize
+        updatePadGeometry();
+
+    </script>
+</body>
+</html>
