@@ -369,32 +369,27 @@
             transition: all 0.2s ease;
         }
 
-        /* Linkes Pad (X/Y) */
+        /* Linkes Pad (X/Y) – einfacher Kreis mit Mittelmarkierung */
         .pad-minus .zone-outer {
             inset: 0;
-            background: radial-gradient(circle, transparent 60%, rgba(250, 204, 21, 0.12) 100%);
+            background: rgba(250, 204, 21, 0.08);
             border: 2px solid rgba(250, 204, 21, 0.35);
         }
 
-        .pad-minus .zone-middle {
-            top: 20%;
-            left: 20%;
-            width: 60%;
-            height: 60%;
-            background: radial-gradient(circle, transparent 50%, rgba(250, 204, 21, 0.18) 100%);
-            border: 2px solid rgba(250, 204, 21, 0.4);
+        .pad-minus .center-marker {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 10px;
+            height: 10px;
+            transform: translate(-50%, -50%);
+            background: rgba(250, 204, 21, 0.6);
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 1;
         }
 
-        .pad-minus .zone-inner {
-            top: 38%;
-            left: 38%;
-            width: 24%;
-            height: 24%;
-            background: rgba(250, 204, 21, 0.25);
-            border: 2px solid rgba(250, 204, 21, 0.55);
-        }
-
-        /* Rechtes Pad (Z) */
+        /* Rechtes Pad – in SRP ausgeblendet, Styles zur Sicherheit beibehalten */
         .pad-plus .zone-outer {
             top: 0;
             left: 50%;
@@ -406,28 +401,6 @@
             border-radius: 15px;
         }
 
-        .pad-plus .zone-middle {
-            top: 15%;
-            left: 50%;
-            width: 30px;
-            height: 70%;
-            transform: translateX(-50%);
-            background: linear-gradient(180deg, transparent 20%, rgba(250, 204, 21, 0.15) 20%, rgba(250, 204, 21, 0.15) 80%, transparent 80%);
-            border: 2px solid rgba(250, 204, 21, 0.4);
-            border-radius: 12px;
-        }
-
-        .pad-plus .zone-inner {
-            top: 40%;
-            left: 50%;
-            width: 30px;
-            height: 20%;
-            transform: translateX(-50%);
-            background: rgba(250, 204, 21, 0.2);
-            border: 2px solid rgba(250, 204, 21, 0.55);
-            border-radius: 10px;
-        }
-
         /* Zone Labels */
         .zone-label {
             position: absolute;
@@ -436,17 +409,6 @@
             pointer-events: none;
             opacity: 0.7;
             color: #facc15;
-        }
-
-        .pad-plus .axis-track {
-            position: absolute;
-            top: 10%;
-            bottom: 10%;
-            left: 50%;
-            width: 4px;
-            transform: translateX(-50%);
-            background: rgba(250, 204, 21, 0.3);
-            border-radius: 4px;
         }
 
         .zone-label.top-label { top: 5px; left: 50%; transform: translateX(-50%); }
@@ -691,8 +653,7 @@
                     <span class="pad-label minus">X / Y / Z Steuerung</span>
                     <div class="control-pad pad-minus" id="padMinus">
                         <div class="zone zone-outer" data-zone="outer"></div>
-                        <div class="zone zone-middle" data-zone="middle"></div>
-                        <div class="zone zone-inner" data-zone="inner"></div>
+                        <div class="center-marker"></div>
                         <span class="zone-label top-label">+Y</span>
                         <span class="zone-label left-label">-X</span>
                         <span class="zone-label right-label">+X</span>
@@ -701,16 +662,11 @@
                     </div>
                 </div>
 
-                <!-- Right Pad (Z-Achse) -->
+                <!-- Right Pad (in SRP per CSS ausgeblendet) -->
                 <div class="pad-container">
                     <span class="pad-label plus">Z-Achse</span>
                     <div class="control-pad pad-plus" id="padPlus">
-                        <div class="axis-track"></div>
                         <div class="zone zone-outer" data-zone="outer"></div>
-                        <div class="zone zone-middle" data-zone="middle"></div>
-                        <div class="zone zone-inner" data-zone="inner"></div>
-                        <span class="zone-label top-label">+Z</span>
-                        <span class="zone-label bottom-label">-Z</span>
                         <div class="touch-indicator" id="indicatorPlus"></div>
                     </div>
                 </div>
@@ -953,13 +909,16 @@
                 if (btnP) btnP.classList.add('active');
 
             } else {
-                // XY-Kreisbereich: Geschwindigkeit proportional zur Distanz
-                state.moveDirection = {
-                    x: Math.max(-1, Math.min(1,  dx / outerRadius)),
-                    y: Math.max(-1, Math.min(1, -dy / outerRadius))
-                };
+                // XY-Kreisbereich: nur Richtung (Einheitsvektor) – einheitliche
+                // Geschwindigkeit, keine Modulation durch Fingerdistanz.
+                var len = Math.sqrt(dx * dx + dy * dy);
+                if (len > 0.0001) {
+                    state.moveDirection = { x: dx / len, y: -dy / len };
+                } else {
+                    state.moveDirection = { x: 0, y: 0 };
+                }
                 state.zDirection = 0;
-                var activeZoneEl = element.querySelector('.zone-' + zone);
+                var activeZoneEl = element.querySelector('.zone-outer');
                 if (activeZoneEl) activeZoneEl.classList.add('active');
             }
 
@@ -984,7 +943,7 @@
                     state.pos.z + state.zDirection * config.zSpeed * dt));
 
             } else {
-                // XY-Kreisbereich: Geschwindigkeit proportional (Richtung * Betrag)
+                // XY-Kreisbereich: einheitliche Geschwindigkeit, Richtung aus Einheitsvektor
                 var xySpd = config.xySpeed * dt;
                 state.pos.x = Math.max(-config.maxRange, Math.min(config.maxRange,
                     state.pos.x + state.moveDirection.x * xySpd));
