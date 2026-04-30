@@ -901,26 +901,26 @@
 
             var zDir = (pad === 'plus') ? 1 : -1;
 
+            // Hilfsvektor: nur Richtung (Einheitsvektor) – keine proportionale
+            // Geschwindigkeitsmodulation. Stillstand nur am Mittelpunkt.
+            var len = Math.sqrt(dx * dx + dy * dy);
+            var unitX = (len > 0.0001) ?  dx / len : 0;
+            var unitY = (len > 0.0001) ? -dy / len : 0;
+
             if (zone === 'inner') {
                 // Innenzone: ausschließlich Z
                 state.moveDirection = { x: 0, y: 0 };
                 state.zDirection    = zDir;
 
             } else if (zone === 'middle') {
-                // Mittelzone: XY proportional (wie Außenzone) + Z – Option B
-                state.moveDirection = {
-                    x: Math.max(-1, Math.min(1,  dx / outerRadius)),
-                    y: Math.max(-1, Math.min(1, -dy / outerRadius))
-                };
+                // Mittelzone: XY (Einheitsrichtung) + Z – einheitliche Geschwindigkeit
+                state.moveDirection = { x: unitX, y: unitY };
                 state.zDirection    = zDir;
 
             } else {
-                // Außenzone: XY proportional, kein Z
-                state.moveDirection = {
-                    x: Math.max(-1, Math.min(1,  dx / outerRadius)),
-                    y: Math.max(-1, Math.min(1, -dy / outerRadius))
-                };
-                state.zDirection = 0;
+                // Außenzone: nur XY (Einheitsrichtung) – einheitliche Geschwindigkeit
+                state.moveDirection = { x: unitX, y: unitY };
+                state.zDirection    = 0;
             }
 
             state.activePad  = pad;
